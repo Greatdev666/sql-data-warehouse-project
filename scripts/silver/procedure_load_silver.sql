@@ -18,6 +18,7 @@ Usage Example:
 ===============================================================================
 */
 
+-- EXEC Silver.load_Silver
 CREATE OR ALTER PROCEDURE Silver.load_Silver AS
 BEGIN
 
@@ -71,7 +72,7 @@ BEGIN
 		*,
 		--selecting only one from duplicates
 		ROW_NUMBER() OVER(PARTITION BY cst_id ORDER BY cst_create_date DESC) as flag_last
-		FROM Silver.crm_cust_info 
+		FROM Bronze.crm_cust_info 
 		WHERE cst_id IS NOT NULL
 		)t WHERE flag_last = 1 
 
@@ -134,7 +135,7 @@ BEGIN
 		-- cos we have issues with some date where start date are higher than end date we will calculate the end date ourselves
 		-- base on the next start date of the next row of the same product video sql with baraa 25:57:30
 		CAST(DATEADD(DAY, -1, LEAD(prd_start_dt) OVER (PARTITION BY prd_key ORDER BY prd_start_dt)) AS DATE) AS prd_end_dt
-		FROM Silver.crm_prd_info
+		FROM Bronze.crm_prd_info
 
 		SET @end_time = GETDATE();
 		PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
@@ -157,29 +158,29 @@ BEGIN
 			sls_price INT, 
 			dwh_end_dt DATETIME2 DEFAULT GETDATE()
 		); */
-		SET @start_time = GETDATE();
-PRINT '>>> Truncating Table: Silver.crm_sales_details';
-TRUNCATE TABLE Silver.crm_sales_details;
-PRINT '>>> Inserting Data into: Silver.crm_sales_details';
+	SET @start_time = GETDATE();
+	PRINT '>>> Truncating Table: Silver.crm_sales_details';
+	TRUNCATE TABLE Silver.crm_sales_details;
+	PRINT '>>> Inserting Data into: Silver.crm_sales_details';
 
-INSERT INTO Silver.crm_sales_details (
-    sls_ord_num,
-    sls_prd_key,
-    sls_cust_id,
-    sls_order_dt,
-    sls_ship_dt,
-    sls_due_date,
-    sls_sales,
-    sls_quantity,
-    sls_price
-)
-SELECT 
-    sls_ord_num,
-    sls_prd_key,
-    sls_cust_id,
-    TRY_CAST(CAST(sls_order_dt AS VARCHAR(8)) AS DATE) AS sls_order_dt,
-    TRY_CAST(CAST(sls_ship_dt AS VARCHAR(8)) AS DATE) AS sls_ship_dt,
-    TRY_CAST(CAST(sls_due_date AS VARCHAR(8)) AS DATE) AS sls_due_date,
+	INSERT INTO Silver.crm_sales_details (
+		sls_ord_num,
+		sls_prd_key,
+		sls_cust_id,
+		sls_order_dt,
+		sls_ship_dt,
+		sls_due_date,
+		sls_sales,
+		sls_quantity,
+		sls_price
+	)
+	SELECT 
+		sls_ord_num,
+		sls_prd_key,
+		sls_cust_id,
+		TRY_CAST(CAST(sls_order_dt AS VARCHAR(8)) AS DATE) AS sls_order_dt,
+		TRY_CAST(CAST(sls_ship_dt AS VARCHAR(8)) AS DATE) AS sls_ship_dt,
+		TRY_CAST(CAST(sls_due_date AS VARCHAR(8)) AS DATE) AS sls_due_date,
     CASE 
         WHEN sls_sales IS NULL OR sls_sales <= 0 
              OR sls_sales != sls_quantity * ABS(sls_price)
@@ -192,11 +193,11 @@ SELECT
         THEN sls_sales / NULLIF(sls_quantity, 0)
         ELSE sls_price
     END AS sls_price
-FROM Bronze.crm_sales_details;
+	FROM Bronze.crm_sales_details;
 
-SET @end_time = GETDATE();
-PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
-PRINT '>>------------';
+	SET @end_time = GETDATE();
+	PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+	PRINT '>>------------';
 
 
 
@@ -228,7 +229,7 @@ PRINT '>>------------';
 			 WHEN UPPER(TRIM(GEN)) IN ('M', 'MALE') THEN 'MALE'
 			 ELSE 'N/A'
 		END AS GEN
-		FROM Silver.erp_cust_az12
+		FROM Bronze.erp_cust_az12
 		
 		SET @end_time = GETDATE();
 		PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
@@ -253,7 +254,7 @@ PRINT '>>------------';
 			 WHEN TRIM(cntry) = '' OR cntry IS NULL THEN 'N/A'
 			 ELSE TRIM(cntry)
 		END cntry 
-		FROM Silver.erp_loc_a101 
+		FROM Bronze.erp_loc_a101 
 		--WHERE REPLACE(cid, '-','') NOT IN (SELECT cst_key FROM Silver.crm_cust_info)
 		SET @end_time = GETDATE();
 		PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
@@ -277,7 +278,7 @@ PRINT '>>------------';
 		CAT,
 		SUBCAT,
 		MAINTAINANCE
-		FROM Silver.erp_px_cat_g1v2
+		FROM Bronze.erp_px_cat_g1v2
 
 		SET @end_time = GETDATE();
 		PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
@@ -297,6 +298,8 @@ PRINT '>>------------';
 		PRINT '============================================'
 	END CATCH
 END
+
+
 
 
 
